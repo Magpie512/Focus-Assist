@@ -1,6 +1,5 @@
 venv/
 .venv/
 __pycache__/
-*.mov
 *.mp4
 .vscode/
