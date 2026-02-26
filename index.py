@@ -7,7 +7,7 @@ mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
 # 2. Check for the .mov file
-video_path = "1.mov"
+video_path = "1.mp4"
 if not os.path.exists(video_path):
     print(f"Error: {video_path} not found in {os.getcwd()}")
     exit()
