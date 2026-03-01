@@ -119,7 +119,7 @@ while cap.isOpened():
 
     # Basic preview so you can see the detection status
     status_color = (0, 0, 255) if looking_away else (0, 255, 0)
-    cv2.putText(frame, f"LOOKING AWAY: {looking_away}", (10, 30),
+    cv2.putText(frame, f"LOOKING AWAY: {looking_away}", (50, 30), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, status_color, 2)
     cv2.imshow("Webcam Preview", frame)
 
