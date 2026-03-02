@@ -6,6 +6,8 @@ import sys
 import time
 import ctypes
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # 1. Setup MediaPipe (supports both legacy Solutions API and newer Tasks API)
 face_mesh = None
 face_landmarker = None
@@ -17,7 +19,7 @@ if hasattr(mp, "solutions") and hasattr(mp.solutions, "face_mesh"):
         min_tracking_confidence=0.5,
     )
 else:
-    model_path = os.path.join("models", "face_landmarker.task")
+    model_path = os.path.join(SCRIPT_DIR, "models", "face_landmarker.task")
     if not os.path.exists(model_path):
         print(f"Error: Face model not found at {model_path}")
         sys.exit(1)
@@ -35,14 +37,14 @@ else:
     face_landmarker = FaceLandmarker.create_from_options(options)
 
 # 2. Check alert media (video and/or image)
-video_path = "1.mov"
-image_path = "1.png"
+video_path = os.path.join(SCRIPT_DIR, "1.mov")
+image_path = os.path.join(SCRIPT_DIR, "1.png")
 has_video_alert = os.path.exists(video_path)
 has_image_alert = os.path.exists(image_path)
 
 if not has_video_alert and not has_image_alert:
     print(
-        f"Error: No alert media found in {os.getcwd()}. "
+        f"Error: No alert media found in {SCRIPT_DIR}. "
         "Add 1.mov or 1.png to the project root."
     )
     sys.exit(1)
@@ -91,7 +93,7 @@ if not cap.isOpened():
     print("Error: Could not open webcam.")
     sys.exit(1)
 
-video_full_path = os.path.abspath(video_path)
+video_full_path = video_path
 vlc = None
 alert_player = None
 
