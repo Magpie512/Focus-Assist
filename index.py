@@ -17,8 +17,8 @@ face_landmarker = None
 if hasattr(mp, "solutions") and hasattr(mp.solutions, "face_mesh"):
     mp_face_mesh = mp.solutions.face_mesh
     face_mesh = mp_face_mesh.FaceMesh(
-        min_detection_confidence=0.4,
-        min_tracking_confidence=0.4,
+        min_detection_confidence=0.6,
+        min_tracking_confidence=0.6,
     )
 else:
     model_path = os.path.join(SCRIPT_DIR, "models", "face_landmarker.task")
