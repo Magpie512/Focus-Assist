@@ -5,6 +5,8 @@ import os
 import sys
 import time
 import ctypes
+import tkinter as tk
+from PIL import Image, ImageTk
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -15,8 +17,8 @@ face_landmarker = None
 if hasattr(mp, "solutions") and hasattr(mp.solutions, "face_mesh"):
     mp_face_mesh = mp.solutions.face_mesh
     face_mesh = mp_face_mesh.FaceMesh(
-        min_detection_confidence=0.5,
-        min_tracking_confidence=0.5,
+        min_detection_confidence=0.4,
+        min_tracking_confidence=0.4,
     )
 else:
     model_path = os.path.join(SCRIPT_DIR, "models", "face_landmarker.task")
@@ -51,7 +53,7 @@ if not has_video_alert and not has_image_alert:
 
 alert_image = None
 alert_image_resized = None
-alert_image_window_name = "Focus Alert Image"
+alert_image_window_name = "GET A JOB THEN"
 screen_w, screen_h = 1920, 1080
 
 if has_image_alert:
@@ -123,12 +125,47 @@ alert_disabled_by_user = False
 preview_window_name = "Webcam Preview"
 cv2.namedWindow(preview_window_name, cv2.WINDOW_NORMAL)
 
+# Create Tkinter alert window in main thread
+alert_window = tk.Tk()
+alert_window.attributes('-topmost', True)  # Always on top
+alert_window.attributes('-fullscreen', True)  # Fullscreen
+alert_window.configure(bg='black')
+alert_label = tk.Label(alert_window, bg='black')
+alert_label.pack(fill=tk.BOTH, expand=True)
+alert_window.withdraw()  # Hide initially
+
 
 def is_window_visible(window_name):
     try:
         return cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) >= 1
     except cv2.error:
         return False
+
+def show_alert_window():
+    """Display alert image in fullscreen Tkinter window."""
+    global alert_window, alert_label
+    
+    if alert_image_resized is not None:
+        # Convert BGR to RGB
+        image_rgb = cv2.cvtColor(alert_image_resized, cv2.COLOR_BGR2RGB)
+        # Convert to PIL Image
+        pil_image = Image.fromarray(image_rgb)
+        # Convert to PhotoImage
+        photo = ImageTk.PhotoImage(pil_image)
+        
+        # Update label with image
+        alert_label.config(image=photo)
+        alert_label.image = photo  # Keep a reference
+        
+        # Show and bring to front
+        alert_window.deiconify()
+        alert_window.lift()
+        alert_window.attributes('-topmost', True)
+        alert_window.update()
+
+def close_alert_window():
+    """Hide the alert window."""
+    alert_window.withdraw()
 
 # Focus window tuning (slightly left-biased to match typical webcam placement)
 focus_center_x = 0.46
@@ -185,20 +222,15 @@ while cap.isOpened():
             alert_playing = True
 
         if alert_image_resized is not None:
-            cv2.namedWindow(alert_image_window_name, cv2.WINDOW_NORMAL)
-            cv2.setWindowProperty(
-                alert_image_window_name,
-                cv2.WND_PROP_FULLSCREEN,
-                cv2.WINDOW_FULLSCREEN,
-            )
-            cv2.imshow(alert_image_window_name, alert_image_resized)
+            # Show alert in Tkinter window
+            show_alert_window()
     else:
         if alert_player is not None and alert_playing:
             alert_player.stop()
             alert_playing = False
 
-        if is_window_visible(alert_image_window_name):
-            cv2.destroyWindow(alert_image_window_name)
+        # Close the alert window
+        close_alert_window()
 
     # If user clicks the preview close button, exit without reopening it.
     if cv2.getWindowProperty(preview_window_name, cv2.WND_PROP_VISIBLE) < 1:
@@ -210,6 +242,12 @@ while cap.isOpened():
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, status_color, 2)
     cv2.imshow(preview_window_name, frame)
 
+    # Process Tkinter events
+    try:
+        alert_window.update()
+    except:
+        pass
+
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
@@ -220,6 +258,9 @@ if face_mesh is not None:
     face_mesh.close()
 if face_landmarker is not None:
     face_landmarker.close()
-if is_window_visible(alert_image_window_name):
-    cv2.destroyWindow(alert_image_window_name)
+close_alert_window()
+try:
+    alert_window.destroy()
+except:
+    pass
 cv2.destroyAllWindows()
