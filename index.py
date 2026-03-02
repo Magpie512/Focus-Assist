@@ -170,8 +170,8 @@ def close_alert_window():
 # Focus window tuning (slightly left-biased to match typical webcam placement)
 focus_center_x = 0.46
 focus_center_y = 0.50
-focus_tolerance_x = 0.20
-focus_tolerance_y = 0.17
+focus_tolerance_x = 0.30
+focus_tolerance_y = 0.25
 
 while cap.isOpened():
     success, frame = cap.read()
