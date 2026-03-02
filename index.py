@@ -13,8 +13,8 @@ face_landmarker = None
 if hasattr(mp, "solutions") and hasattr(mp.solutions, "face_mesh"):
     mp_face_mesh = mp.solutions.face_mesh
     face_mesh = mp_face_mesh.FaceMesh(
-        min_detection_confidence=0.7,
-        min_tracking_confidence=0.7,
+        min_detection_confidence=0.5,
+        min_tracking_confidence=0.5,
     )
 else:
     model_path = os.path.join("models", "face_landmarker.task")
@@ -34,19 +34,25 @@ else:
     )
     face_landmarker = FaceLandmarker.create_from_options(options)
 
-# 2. Check for the .mov file
+# 2. Check alert media (video and/or image)
 video_path = "1.mov"
-if not os.path.exists(video_path):
-    print(f"Error: {video_path} not found in {os.getcwd()}")
+image_path = "1.png"
+has_video_alert = os.path.exists(video_path)
+has_image_alert = os.path.exists(image_path)
+
+if not has_video_alert and not has_image_alert:
+    print(
+        f"Error: No alert media found in {os.getcwd()}. "
+        "Add 1.mov or 1.png to the project root."
+    )
     sys.exit(1)
 
-image_path = "1.png"
 alert_image = None
 alert_image_resized = None
 alert_image_window_name = "Focus Alert Image"
 screen_w, screen_h = 1920, 1080
 
-if os.path.exists(image_path):
+if has_image_alert:
     alert_image = cv2.imread(image_path)
     if alert_image is None:
         print(f"Warning: Could not load {image_path}; image alert is disabled.")
@@ -86,21 +92,29 @@ if not cap.isOpened():
     sys.exit(1)
 
 video_full_path = os.path.abspath(video_path)
+vlc = None
+alert_player = None
 
-try:
-    vlc = importlib.import_module("vlc")
-    vlc_instance = vlc.Instance()
-    media = vlc_instance.media_new(video_full_path)
-    media.add_option("input-repeat=-1")
-    alert_player = vlc_instance.media_player_new()
-    alert_player.set_media(media)
-except Exception as exc:
-    print(
-        "Error: VLC setup failed. Install dependencies with `pip install -r requirements.txt` "
-        f"and ensure VLC media player is installed. Details: {exc}"
-    )
-    cap.release()
-    sys.exit(1)
+if has_video_alert:
+    try:
+        vlc = importlib.import_module("vlc")
+        vlc_instance = vlc.Instance()
+        media = vlc_instance.media_new(video_full_path)
+        media.add_option("input-repeat=-1")
+        alert_player = vlc_instance.media_player_new()
+        alert_player.set_media(media)
+    except Exception as exc:
+        if not has_image_alert:
+            print(
+                "Error: VLC setup failed. Install dependencies with `pip install -r requirements.txt` "
+                f"and ensure VLC media player is installed. Details: {exc}"
+            )
+            cap.release()
+            sys.exit(1)
+        print(
+            f"Warning: Video alert disabled because VLC setup failed: {exc}. "
+            "Image alert will still work."
+        )
 
 alert_playing = False
 alert_disabled_by_user = False
@@ -155,7 +169,8 @@ while cap.isOpened():
 
     # If VLC was manually closed while active, keep it closed for this run.
     if (
-        alert_playing
+        alert_player is not None
+        and alert_playing
         and looking_away
         and alert_player.get_state() in (vlc.State.Stopped, vlc.State.Error)
     ):
@@ -163,7 +178,7 @@ while cap.isOpened():
         alert_disabled_by_user = True
 
     if looking_away:
-        if not alert_playing and not alert_disabled_by_user:
+        if alert_player is not None and not alert_playing and not alert_disabled_by_user:
             alert_player.play()
             alert_playing = True
 
@@ -176,7 +191,7 @@ while cap.isOpened():
             )
             cv2.imshow(alert_image_window_name, alert_image_resized)
     else:
-        if alert_playing:
+        if alert_player is not None and alert_playing:
             alert_player.stop()
             alert_playing = False
 
@@ -197,7 +212,7 @@ while cap.isOpened():
         break
 
 cap.release()
-if alert_playing:
+if alert_player is not None and alert_playing:
     alert_player.stop()
 if face_mesh is not None:
     face_mesh.close()
