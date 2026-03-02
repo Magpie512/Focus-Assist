@@ -4,6 +4,7 @@ import importlib
 import os
 import sys
 import time
+import ctypes
 
 # 1. Setup MediaPipe (supports both legacy Solutions API and newer Tasks API)
 face_mesh = None
@@ -39,6 +40,45 @@ if not os.path.exists(video_path):
     print(f"Error: {video_path} not found in {os.getcwd()}")
     sys.exit(1)
 
+image_path = "1.png"
+alert_image = None
+alert_image_resized = None
+alert_image_window_name = "Focus Alert Image"
+screen_w, screen_h = 1920, 1080
+
+if os.path.exists(image_path):
+    alert_image = cv2.imread(image_path)
+    if alert_image is None:
+        print(f"Warning: Could not load {image_path}; image alert is disabled.")
+    else:
+        try:
+            user32 = ctypes.windll.user32
+            screen_w = user32.GetSystemMetrics(0)
+            screen_h = user32.GetSystemMetrics(1)
+        except Exception:
+            screen_w, screen_h = 1920, 1080
+
+        target_w = screen_w
+        target_h = screen_h
+
+        img_h, img_w = alert_image.shape[:2]
+        scale = min(target_w / img_w, target_h / img_h)
+        resized_w = max(1, int(img_w * scale))
+        resized_h = max(1, int(img_h * scale))
+        resized_image = cv2.resize(alert_image, (resized_w, resized_h), interpolation=cv2.INTER_AREA)
+
+        alert_image_resized = cv2.copyMakeBorder(
+            resized_image,
+            (target_h - resized_h) // 2,
+            target_h - resized_h - ((target_h - resized_h) // 2),
+            (target_w - resized_w) // 2,
+            target_w - resized_w - ((target_w - resized_w) // 2),
+            cv2.BORDER_CONSTANT,
+            value=(0, 0, 0),
+        )
+else:
+    print(f"Warning: {image_path} not found; image alert is disabled.")
+
 cap = cv2.VideoCapture(0)
 
 if not cap.isOpened():
@@ -66,6 +106,13 @@ alert_playing = False
 alert_disabled_by_user = False
 preview_window_name = "Webcam Preview"
 cv2.namedWindow(preview_window_name, cv2.WINDOW_NORMAL)
+
+
+def is_window_visible(window_name):
+    try:
+        return cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) >= 1
+    except cv2.error:
+        return False
 
 # Focus window tuning (slightly left-biased to match typical webcam placement)
 focus_center_x = 0.46
@@ -119,10 +166,22 @@ while cap.isOpened():
         if not alert_playing and not alert_disabled_by_user:
             alert_player.play()
             alert_playing = True
+
+        if alert_image_resized is not None:
+            cv2.namedWindow(alert_image_window_name, cv2.WINDOW_NORMAL)
+            cv2.setWindowProperty(
+                alert_image_window_name,
+                cv2.WND_PROP_FULLSCREEN,
+                cv2.WINDOW_FULLSCREEN,
+            )
+            cv2.imshow(alert_image_window_name, alert_image_resized)
     else:
         if alert_playing:
             alert_player.stop()
             alert_playing = False
+
+        if is_window_visible(alert_image_window_name):
+            cv2.destroyWindow(alert_image_window_name)
 
     # If user clicks the preview close button, exit without reopening it.
     if cv2.getWindowProperty(preview_window_name, cv2.WND_PROP_VISIBLE) < 1:
@@ -130,7 +189,7 @@ while cap.isOpened():
 
     # Basic preview so you can see the detection status
     status_color = (0, 0, 255) if looking_away else (0, 255, 0)
-    cv2.putText(frame, f"LOOKING AWAY: {looking_away}", (50, 30), 
+    cv2.putText(frame, f"LOOKING AWAY: {looking_away}", (30, 30), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, status_color, 2)
     cv2.imshow(preview_window_name, frame)
 
@@ -144,4 +203,6 @@ if face_mesh is not None:
     face_mesh.close()
 if face_landmarker is not None:
     face_landmarker.close()
+if is_window_visible(alert_image_window_name):
+    cv2.destroyWindow(alert_image_window_name)
 cv2.destroyAllWindows()
