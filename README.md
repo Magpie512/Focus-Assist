@@ -1,4 +1,4 @@
-# Focus-Guard AI BABYBOO
+# Study Encouragement
 A Python tool that plays a video to shame you when you look away from your laptop (e.g., checking your phone).
 
 ## How to use:
