@@ -17,8 +17,8 @@ face_landmarker = None
 if hasattr(mp, "solutions") and hasattr(mp.solutions, "face_mesh"):
     mp_face_mesh = mp.solutions.face_mesh
     face_mesh = mp_face_mesh.FaceMesh(
-        min_detection_confidence=0.6,
-        min_tracking_confidence=0.6,
+        min_detection_confidence=0.8,
+        min_tracking_confidence=0.8,
     )
 else:
     model_path = os.path.join(SCRIPT_DIR, "models", "face_landmarker.task")
@@ -122,7 +122,7 @@ if has_video_alert:
 
 alert_playing = False
 alert_disabled_by_user = False
-preview_window_name = "Webcam Preview"
+preview_window_name = "Watching you <3"
 cv2.namedWindow(preview_window_name, cv2.WINDOW_NORMAL)
 
 # Create Tkinter alert window in main thread
@@ -167,8 +167,8 @@ def close_alert_window():
     """Hide the alert window."""
     alert_window.withdraw()
 
-# Focus window tuning (slightly left-biased to match typical webcam placement)
-focus_center_x = 0.46
+# Focus window tuning (centered for middle webcam placement)
+focus_center_x = 0.50
 focus_center_y = 0.50
 focus_tolerance_x = 0.30
 focus_tolerance_y = 0.25
